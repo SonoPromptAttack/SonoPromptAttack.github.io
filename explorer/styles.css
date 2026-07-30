@@ -325,7 +325,7 @@ h1 {
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 1fr)) auto;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
   gap: 0.85rem;
   padding: 1rem;
   background: var(--filter-bg);
@@ -344,8 +344,7 @@ label {
   font-family: var(--mono);
 }
 
-select,
-button#replay {
+select {
   min-height: 42px;
   border: 1px solid var(--select-border);
   border-radius: var(--radius);
@@ -355,23 +354,9 @@ button#replay {
   font: inherit;
 }
 
-select:focus,
-button#replay:focus-visible {
+select:focus {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
-}
-
-button#replay {
-  align-self: end;
-  background: var(--cyan);
-  border-color: var(--cyan);
-  color: var(--btn-primary-fg);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-button#replay:hover {
-  filter: brightness(1.06);
 }
 
 .result-header {
@@ -624,23 +609,6 @@ pre {
 .footer-inner a:hover {
   color: var(--link-hover);
   text-decoration: underline;
-}
-
-.typing::after {
-  content: "";
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  margin-left: 3px;
-  background: var(--cyan);
-  animation: blink 0.75s step-end infinite;
-  vertical-align: text-bottom;
-}
-
-@keyframes blink {
-  50% {
-    opacity: 0;
-  }
 }
 
 @media (max-width: 980px) {

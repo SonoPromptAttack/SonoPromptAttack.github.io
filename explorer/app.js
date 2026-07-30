@@ -1,4 +1,4 @@
-const state = { examples: [], visible: [], selected: null, timer: null, syncing: false };
+const state = { examples: [], visible: [], selected: null, syncing: false };
 const $ = (id) => document.getElementById(id);
 const unique = (items, key) => [...new Set(items.map((item) => item[key]))].sort();
 const fill = (select, values, current) => {
@@ -96,23 +96,7 @@ function updateFilters(origin, { skipUrl = false } = {}) {
   if (!skipUrl) writeParams();
 }
 
-function typeInto(node, text, speed = 2) {
-  clearInterval(state.timer);
-  node.textContent = "";
-  node.classList.add("typing");
-  let i = 0;
-  const chunk = Math.max(1, Math.ceil(text.length / 180));
-  state.timer = setInterval(() => {
-    i = Math.min(text.length, i + chunk);
-    node.textContent = text.slice(0, i);
-    if (i >= text.length) {
-      clearInterval(state.timer);
-      node.classList.remove("typing");
-    }
-  }, speed * chunk);
-}
-
-function render(animate = false) {
+function render() {
   const x = state.selected;
   if (!x) return;
   $("title").textContent = x.title;
@@ -136,13 +120,8 @@ function render(animate = false) {
     .join("");
   $("record-key").textContent = x.key;
   $("dataset-source").textContent = `${x.dataset_source} · row ${x.dataset_row_index}`;
-  if (animate) {
-    typeInto($("original-prompt"), x.original_prompt);
-    setTimeout(() => typeInto($("attacked-prompt"), x.attacked_prompt), 650);
-  } else {
-    $("original-prompt").textContent = x.original_prompt;
-    $("attacked-prompt").textContent = x.attacked_prompt;
-  }
+  $("original-prompt").textContent = x.original_prompt;
+  $("attacked-prompt").textContent = x.attacked_prompt;
 }
 
 function escapeHtml(value) {
@@ -164,7 +143,6 @@ fetch("data/examples.json")
     ["proposer", "target", "task", "example"].forEach((id) =>
       $(id).addEventListener("change", () => updateFilters(id))
     );
-    $("replay").addEventListener("click", () => render(true));
   })
   .catch((error) => {
     document.querySelector("main").innerHTML = `<p>Could not load examples: ${error.message}</p>`;
