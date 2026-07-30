@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SonoPromptAttack — When Minor Edits Matter</title>
+  <meta name="description" content="Black-box LLM-driven prompt attacks reveal that clinically plausible wording changes can flip ultrasound Med-VLM predictions." />
+  <meta name="theme-color" content="#070b10" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#f2f5f8" media="(prefers-color-scheme: light)" />
+  <meta property="og:title" content="SonoPromptAttack — When Minor Edits Matter" />
+  <meta property="og:description" content="LLM-driven prompt attack for medical VLM robustness in ultrasound. Black-box evaluation with MCTS-guided edits." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="assets/og-image.jpg" />
+  <meta property="og:url" content="https://sonopromptattack.github.io/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="SonoPromptAttack — When Minor Edits Matter" />
+  <meta name="twitter:description" content="LLM-driven prompt attack for medical VLM robustness in ultrasound." />
+  <meta name="twitter:image" content="assets/og-image.jpg" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="canonical" href="https://arxiv.org/abs/2603.21047" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script>
+    /* Apply theme before paint to avoid flash */
+    (function () {
+      try {
+        var stored = localStorage.getItem("sono-theme");
+        var theme =
+          stored === "light" || stored === "dark"
+            ? stored
+            : window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="scanline" aria-hidden="true"></div>
+  <div class="noise" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="logo" href="#top">
+      <span class="logo-mark" aria-hidden="true"></span>
+      <span class="logo-text">SonoPrompt<span class="accent">Attack</span></span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Primary">
+      <a href="#problem">Problem</a>
+      <a href="#method">Method</a>
+      <a href="#results">Results</a>
+      <a href="explorer/">Interactive explorer</a>
+      <a href="#quality">Quality</a>
+      <a href="#ablation">Ablation</a>
+      <a href="#paper">Paper</a>
+      <a href="https://github.com/yasamin-med/SonoPromptAttack" target="_blank" rel="noopener noreferrer">Code</a>
+    </nav>
+    <div class="header-actions">
+      <button
+        type="button"
+        class="theme-toggle"
+        id="themeToggle"
+        aria-label="Switch to light mode"
+        title="Toggle color theme"
+      >
+        <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        </svg>
+        <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 7 7 0 1 0 20.5 14.5Z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false">
+        <span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <div id="top" tabindex="-1"></div>
+    <!-- HERO -->
+    <section class="hero" aria-label="Introduction">
+      <div class="hero-sonar" aria-hidden="true">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+        <div class="ring r4"></div>
+        <div class="sonar-beam"></div>
+        <div class="sonar-dot"></div>
+      </div>
+
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <h1>
+            When minor edits<br />
+            <em>matter</em>
+          </h1>
+          <p class="hero-authors">
+            Yasamin Medghalchi<sup>1</sup>, Milad Yazdani<sup>1</sup>, Amirhossein Dabiriaghdam<sup>1</sup>,
+            Moein Heidari<sup>1</sup>, Mojan Izadkhah<sup>1</sup>, Zahra Kavian<sup>1</sup>,
+            Giuseppe Carenini<sup>1</sup>, Lele Wang<sup>1</sup>, Dena Shahriari<sup>1</sup>,
+            Ilker Hacihaliloglu<sup>1</sup>
+          </p>
+          <p class="hero-affil">
+            <sup>1</sup> University of British Columbia, Vancouver, Canada
+          </p>
+          <p class="lede">
+            Clinically plausible prompt rewrites—not typos, not jailbreaks—can flip
+            ultrasound vision–language model predictions. We introduce
+            <strong>SonoPromptAttack</strong>: LLM edits guided by Monte Carlo Tree Search.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://arxiv.org/pdf/2603.21047" target="_blank" rel="noopener noreferrer">
+              <span>Read the paper</span>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <a class="btn btn-ghost" href="explorer/">Interactive explorer</a>
+            <a class="btn btn-ghost" href="https://github.com/yasamin-med/SonoPromptAttack" target="_blank" rel="noopener noreferrer">Code</a>
+            <a class="btn btn-ghost" href="#cite">Cite</a>
+          </div>
+        </div>
+
+        <aside class="hero-panel" aria-label="Attack examples">
+          <div class="panel-head">
+            <span class="panel-tag">examples</span>
+            <span class="panel-status">prediction flip</span>
+          </div>
+          <div class="flip-demo" id="flipDemo">
+            <div class="flip-row">
+              <span class="flip-label">anatomy</span>
+              <span class="flip-value" data-field="anatomy">Breast US</span>
+            </div>
+            <div class="prompt-diff">
+              <div class="diff-block original">
+                <span class="diff-tag">original</span>
+                <p data-field="original"></p>
+              </div>
+              <div class="diff-arrow" aria-hidden="true">↓ minimal edit</div>
+              <div class="diff-block attacked">
+                <span class="diff-tag">rewritten</span>
+                <p data-field="rewritten"></p>
+              </div>
+            </div>
+            <div class="pred-row">
+              <div class="pred clean">
+                <span>clean</span>
+                <strong data-field="before">benign</strong>
+              </div>
+              <div class="pred-arrow" aria-hidden="true">→</div>
+              <div class="pred attacked">
+                <span>attacked</span>
+                <strong data-field="after">malignant</strong>
+              </div>
+            </div>
+            <div class="demo-dots" id="demoDots" role="tablist" aria-label="Example cases"></div>
+          </div>
+          <a class="panel-explore" id="panelExplore" href="explorer/?id=gemma-4-12b-it-medgemma-27b-dd-2">
+            Interactive explorer
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </aside>
+      </div>
+    </section>
+
+    <!-- STAT STRIP -->
+    <section class="stat-strip" aria-label="Key findings">
+      <div class="stat">
+        <span class="stat-num" data-count="60.9">0</span>
+        <span class="stat-unit">%</span>
+        <span class="stat-desc">Highest attack success on disease diagnosis (MedGemma-27B)</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" data-count="99">0</span>
+        <span class="stat-unit">%+</span>
+        <span class="stat-desc">Meaning of the original question kept after edits</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" data-count="5">0</span>
+        <span class="stat-unit"></span>
+        <span class="stat-desc">Medical vision–language models tested (query-only access)</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" data-count="77">0</span>
+        <span class="stat-unit">%</span>
+        <span class="stat-desc">Success with MCTS search vs 39% with beam search</span>
+      </div>
+    </section>
+
+    <!-- PROBLEM -->
+    <section id="problem" class="section">
+      <div class="section-label">
+        <span class="num">01</span>
+        <span>The problem</span>
+      </div>
+      <div class="two-col">
+        <div>
+          <h2>The text interface is the attack surface</h2>
+          <p>
+            Ultrasound Med-VLMs are queried in natural language. In POCUS and
+            decentralized care, prompts are informal, abbreviated, or noisy—
+            shorthand from a busy clinic, not a hand-crafted jailbreak.
+          </p>
+          <p>
+            Prior safety work often tests <em>obviously</em> unsafe instructions.
+            We study something quieter: meaning-preserving rewrites that a
+            clinician could type without intending harm—and still flip the answer.
+          </p>
+        </div>
+        <div class="risk-cards">
+          <article class="risk-card">
+            <span class="risk-icon">//</span>
+            <h3>Not typos only</h3>
+            <p>Character noise is easy to spot. Natural paraphrases are not.</p>
+          </article>
+          <article class="risk-card">
+            <span class="risk-icon">??</span>
+            <h3>Intent preserved</h3>
+            <p>Same diagnostic question. Different wording. Different prediction.</p>
+          </article>
+          <article class="risk-card">
+            <span class="risk-icon">!!</span>
+            <h3>Clinical stakes</h3>
+            <p>Benign ↔ malignant is not a cosmetic error—it changes the care path.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- METHOD -->
+    <section id="method" class="section section-alt">
+      <div class="section-label">
+        <span class="num">02</span>
+        <span>Method</span>
+      </div>
+      <h2>Black-box edits that stay clinical</h2>
+      <div class="method-layout">
+        <div class="method-prose">
+          <p>
+            <strong>SonoPromptAttack</strong> never touches the ultrasound image
+            and never needs gradients. An attacker LLM suggests small, meaning-preserving
+            span replacements—synonyms, light reordering, punctuation—while answer
+            option tokens stay locked.
+          </p>
+          <p>
+            Invalid proposals are dropped by rule (exact span, English-only, no
+            duplicates). Rejection feedback is fed back so the next round is less
+            wasteful. Surviving edits grow a search tree of candidate questions.
+          </p>
+          <p>
+            <strong>Monte Carlo Tree Search</strong> chooses which wording branch
+            to try next, scores each rewrite by how much the target model’s
+            confidence shifts, and continues until the answer flips or the budget
+            runs out (at most 80 model queries and 8 edit steps).
+          </p>
+        </div>
+        <aside class="method-spec" aria-label="Attack configuration">
+          <h3>Attack setup</h3>
+          <dl>
+            <div>
+              <dt>Access</dt>
+              <dd>Queries only — no model weights or gradients</dd>
+            </div>
+            <div>
+              <dt>Edit unit</dt>
+              <dd>Replace a short phrase: <code>old → new</code></dd>
+            </div>
+            <div>
+              <dt>Proposals / step</dt>
+              <dd>Up to 3 candidate rewrites, then filtered</dd>
+            </div>
+            <div>
+              <dt>Search</dt>
+              <dd>Monte Carlo Tree Search (balanced exploration)</dd>
+            </div>
+            <div>
+              <dt>Reward</dt>
+              <dd>How much the model’s top choice loses confidence</dd>
+            </div>
+            <div>
+              <dt>Success</dt>
+              <dd>Wrong answer, same clinical intent</dd>
+            </div>
+          </dl>
+        </aside>
+      </div>
+      <figure class="paper-figure">
+        <img
+          src="assets/figures/method-overview.png"
+          alt="Overview of SonoPromptAttack: a language model proposes prompt edits, filters validate them, tree search selects branches using target-model scores, and a prediction can flip after a short edit sequence."
+          loading="lazy"
+          width="2800"
+          height="1960"
+          decoding="async"
+        />
+        <figcaption>
+          How SonoPromptAttack works: propose small rewrites, keep only valid ones,
+          and search until the ultrasound model’s answer changes (paper Fig.&nbsp;1).
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="results" class="section">
+      <div class="section-label">
+        <span class="num">03</span>
+        <span>Results</span>
+      </div>
+      <h2>Attack strength without mangling language</h2>
+      <p class="section-intro">
+        We evaluate on U2-Bench ultrasound questions: <strong>disease diagnosis</strong>
+        (what is wrong?) and <strong>lesion localization</strong> (where is it?),
+        across five medical vision–language models. Attack success is counted only
+        when the model was correct before the rewrite.
+      </p>
+
+      <p class="explorer-cta">
+        <a class="btn btn-primary" href="explorer/">
+          <span>Interactive explorer</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <span class="explorer-cta-note">Browse 200 recorded successful attacks by proposer, target model, and task.</span>
+      </p>
+
+      <div class="tabs" role="tablist" aria-label="Result tables">
+        <button class="tab active" role="tab" id="tab-dd" aria-controls="panel-dd" aria-selected="true" data-tab="dd" type="button">Disease Diagnosis</button>
+        <button class="tab" role="tab" id="tab-ll" aria-controls="panel-ll" aria-selected="false" data-tab="ll" type="button" tabindex="-1">Lesion Localization</button>
+      </div>
+
+      <div class="table-wrap tab-panel active" id="panel-dd" role="tabpanel" aria-labelledby="tab-dd">
+        <p class="table-caption">
+          Disease diagnosis — higher attack success and similarity are better;
+          lower perplexity (more fluent text) is better. Highlighted rows are SonoPromptAttack.
+        </p>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th colspan="3">MedGemma-4B</th>
+              <th colspan="3">MedGemma-27B</th>
+              <th colspan="3">QoQ-Med-7B</th>
+              <th colspan="3">QoQ-Med-32B</th>
+              <th colspan="3">LLaVA-Med-7B</th>
+            </tr>
+            <tr class="subhead">
+              <th></th>
+              <th title="Attack success rate (%)">Success</th><th title="Semantic similarity (%)">Similar</th><th title="Perplexity (lower = more fluent)">Fluency</th>
+              <th title="Attack success rate (%)">Success</th><th title="Semantic similarity (%)">Similar</th><th title="Perplexity (lower = more fluent)">Fluency</th>
+              <th title="Attack success rate (%)">Success</th><th title="Semantic similarity (%)">Similar</th><th title="Perplexity (lower = more fluent)">Fluency</th>
+              <th title="Attack success rate (%)">Success</th><th title="Semantic similarity (%)">Similar</th><th title="Perplexity (lower = more fluent)">Fluency</th>
+              <th title="Attack success rate (%)">Success</th><th title="Semantic similarity (%)">Similar</th><th title="Perplexity (lower = more fluent)">Fluency</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Random typos</td>
+              <td>23.5</td><td>96.4</td><td>161</td>
+              <td>27.3</td><td>96.5</td><td>147</td>
+              <td>28.1</td><td>96.3</td><td>134</td>
+              <td>21.9</td><td>95.6</td><td>270</td>
+              <td>9.1</td><td>96.4</td><td>106</td>
+            </tr>
+            <tr>
+              <td>Greedy typos</td>
+              <td>18.6</td><td>98.3</td><td>27.9</td>
+              <td>26.4</td><td>99.0</td><td>26.6</td>
+              <td>22.8</td><td>98.6</td><td>56.2</td>
+              <td>20.3</td><td>97.5</td><td>77.0</td>
+              <td><strong>29.5</strong></td><td>97.7</td><td>34.4</td>
+            </tr>
+            <tr>
+              <td>TextFooler</td>
+              <td>16.5</td><td>98.8</td><td>30.6</td>
+              <td>22.9</td><td>99.5</td><td>18.6</td>
+              <td>17.4</td><td>99.2</td><td>25.8</td>
+              <td>24.1</td><td>98.6</td><td>38.6</td>
+              <td>12.2</td><td>99.8</td><td>16.6</td>
+            </tr>
+            <tr>
+              <td>DeepWordBug</td>
+              <td>15.0</td><td>99.0</td><td>38.6</td>
+              <td>24.5</td><td>99.2</td><td>25.4</td>
+              <td>17.9</td><td>98.7</td><td>42.8</td>
+              <td>19.9</td><td>97.9</td><td>50.7</td>
+              <td>5.9</td><td>99.9</td><td>16.3</td>
+            </tr>
+            <tr class="ours">
+              <td>Ours · Qwen 7B</td>
+              <td>27.0</td><td>98.9</td><td><strong>14.5</strong></td>
+              <td>34.8</td><td>98.9</td><td><strong>14.4</strong></td>
+              <td>24.4</td><td>98.8</td><td><strong>14.1</strong></td>
+              <td>27.2</td><td>99.0</td><td><strong>14.8</strong></td>
+              <td>14.0</td><td>98.9</td><td>11.1</td>
+            </tr>
+            <tr class="ours">
+              <td>Ours · Qwen 14B</td>
+              <td>42.9</td><td>98.7</td><td>16.6</td>
+              <td>52.0</td><td>98.8</td><td>16.8</td>
+              <td>40.1</td><td>98.6</td><td>16.4</td>
+              <td><strong>35.2</strong></td><td>98.9</td><td>17.4</td>
+              <td>15.9</td><td>99.1</td><td><strong>10.9</strong></td>
+            </tr>
+            <tr class="ours best">
+              <td>Ours · Gemma E4B</td>
+              <td><strong>47.9</strong></td><td>99.1</td><td>18.2</td>
+              <td><strong>60.9</strong></td><td>99.2</td><td>18.2</td>
+              <td><strong>45.3</strong></td><td>99.1</td><td>19.9</td>
+              <td>32.7</td><td>99.1</td><td>18.4</td>
+              <td>18.0</td><td>99.2</td><td>11.7</td>
+            </tr>
+            <tr class="ours">
+              <td>Ours · Gemma 12B</td>
+              <td>38.4</td><td>98.7</td><td>19.4</td>
+              <td>40.3</td><td>98.9</td><td>17.8</td>
+              <td>32.4</td><td>98.5</td><td>20.8</td>
+              <td>26.3</td><td>98.8</td><td>19.5</td>
+              <td>19.8</td><td>99.3</td><td>11.1</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="table-note">
+          On disease diagnosis, SonoPromptAttack has the highest attack success for four of
+          five models (second on LLaVA-Med-7B) and produces the most fluent rewrites overall.
+        </p>
+      </div>
+
+      <div class="table-wrap tab-panel" id="panel-ll" role="tabpanel" aria-labelledby="tab-ll" hidden>
+        <p class="table-caption">
+          Lesion localization — typo-style attacks can flip answers often, but the text becomes hard to read.
+          Highlighted rows are SonoPromptAttack.
+        </p>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th colspan="3">MedGemma-4B</th>
+              <th colspan="3">MedGemma-27B</th>
+              <th colspan="3">QoQ-Med-7B</th>
+              <th colspan="3">QoQ-Med-32B</th>
+              <th colspan="3">LLaVA-Med-7B</th>
+            </tr>
+            <tr class="subhead">
+              <th></th>
+              <th title="Attack success rate (%)">Success</th><th title="Semantic similarity (%)">Similar</th><th title="Perplexity (lower = more fluent)">Fluency</th>
+              <th title="Attack success rate (%)">Success</th><th title="Semantic similarity (%)">Similar</th><th title="Perplexity (lower = more fluent)">Fluency</th>
+              <th title="Attack success rate (%)">Success</th><th title="Semantic similarity (%)">Similar</th><th title="Perplexity (lower = more fluent)">Fluency</th>
+              <th title="Attack success rate (%)">Success</th><th title="Semantic similarity (%)">Similar</th><th title="Perplexity (lower = more fluent)">Fluency</th>
+              <th title="Attack success rate (%)">Success</th><th title="Semantic similarity (%)">Similar</th><th title="Perplexity (lower = more fluent)">Fluency</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Random typos</td>
+              <td><strong>100</strong></td><td>95.7</td><td>84.4</td>
+              <td><strong>93.0</strong></td><td>96.4</td><td>34.4</td>
+              <td><strong>96.3</strong></td><td>95.2</td><td>79.1</td>
+              <td>21.1</td><td>95.0</td><td>36.3</td>
+              <td><strong>100</strong></td><td>96.5</td><td>33.6</td>
+            </tr>
+            <tr>
+              <td>DeepWordBug</td>
+              <td><strong>100</strong></td><td>98.4</td><td>14.3</td>
+              <td>88.4</td><td>98.7</td><td>13.8</td>
+              <td>50.7</td><td>98.0</td><td>15.0</td>
+              <td>18.0</td><td>98.6</td><td>15.6</td>
+              <td>83.6</td><td>98.4</td><td>18.9</td>
+            </tr>
+            <tr class="ours">
+              <td>Ours · Qwen 7B</td>
+              <td>95.2</td><td>98.2</td><td><strong>7.8</strong></td>
+              <td>87.5</td><td>98.3</td><td><strong>8.1</strong></td>
+              <td>29.4</td><td>99.1</td><td><strong>8.0</strong></td>
+              <td>32.6</td><td>98.5</td><td><strong>8.1</strong></td>
+              <td>77.1</td><td>97.6</td><td><strong>7.5</strong></td>
+            </tr>
+            <tr class="ours">
+              <td>Ours · Qwen 14B</td>
+              <td>85.7</td><td>99.7</td><td>9.1</td>
+              <td>90.0</td><td>99.7</td><td>9.3</td>
+              <td>44.1</td><td>99.7</td><td>9.1</td>
+              <td>34.0</td><td>99.7</td><td>9.3</td>
+              <td>62.3</td><td>99.5</td><td>9.8</td>
+            </tr>
+            <tr class="ours">
+              <td>Ours · Gemma E4B</td>
+              <td>95.2</td><td>99.4</td><td>9.3</td>
+              <td>87.5</td><td>99.4</td><td>9.1</td>
+              <td>39.7</td><td>99.4</td><td>9.3</td>
+              <td><strong>38.9</strong></td><td>99.4</td><td>9.4</td>
+              <td>34.4</td><td>99.1</td><td>10.3</td>
+            </tr>
+            <tr class="ours">
+              <td>Ours · Gemma 12B</td>
+              <td><strong>100</strong></td><td>99.6</td><td>9.8</td>
+              <td>80.0</td><td>99.2</td><td>9.5</td>
+              <td>50.0</td><td>98.6</td><td>10.7</td>
+              <td>29.9</td><td>99.2</td><td>10.4</td>
+              <td>36.9</td><td>98.0</td><td>10.4</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="table-note">
+          On lesion localization, every SonoPromptAttack variant produces the most fluent
+          text for all five models—and the closest match to the original meaning—without
+          relying on garbled characters.
+        </p>
+      </div>
+
+      <div class="anatomy-block">
+        <div class="anatomy-copy">
+          <h3>Vulnerability depends on the body region</h3>
+          <p>
+            Average scores hide big differences by anatomy. Lung questions are often easy
+            to flip (about 47–66% mean success depending on the model). On MedGemma-4B,
+            skin and knee questions are also fragile (~69% and ~71%). PCOS and some thyroid
+            cases hold up much better for certain models. Robustness checks should break
+            results down by anatomy—not only report one overall number.
+          </p>
+          <p class="table-note anatomy-note">
+            Bars show mean attack success by anatomy for MedGemma-4B (higher = more vulnerable).
+          </p>
+        </div>
+        <div class="anatomy-bars" id="anatomyBars" role="img" aria-label="Mean attack success rate by anatomy on MedGemma-4B">
+          <!-- filled by JS -->
+        </div>
+      </div>
+
+      <figure class="paper-figure">
+        <img
+          src="assets/figures/dd-asr-anatomy.png"
+          alt="Attack success rate by anatomy and target medical vision-language model. Colored markers show each rewrite model; gray bars show the average across rewrite models."
+          loading="lazy"
+          width="2400"
+          height="1441"
+          decoding="async"
+        />
+        <figcaption>
+          Disease-diagnosis attack success by anatomy and model: some organs and models
+          are far more sensitive to wording than others (paper figure).
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- QUALITY -->
+    <section id="quality" class="section section-alt">
+      <div class="section-label">
+        <span class="num">04</span>
+        <span>Perturbation quality</span>
+      </div>
+      <h2>Stronger attacks without mangled text</h2>
+      <p class="section-intro">
+        Baseline methods often succeed by injecting typos or swapping clinical terms.
+        SonoPromptAttack aims for rewrites a clinician could still read: natural wording,
+        correct grammar, and the same diagnostic intent—checked by an automated language judge.
+      </p>
+
+      <div class="compare-block">
+        <div class="compare-table">
+          <div class="compare-row method-label">
+            <span>Method</span>
+            <span>Typical prompt change</span>
+          </div>
+          <div class="compare-row">
+            <span class="method-name">Char random</span>
+            <span class="method-ex"><s>radiologist</s> → <code>hre a radiologist</code> · <s>breast</s> → <code>breasd</code></span>
+          </div>
+          <div class="compare-row">
+            <span class="method-name">TextFooler</span>
+            <span class="method-ex"><s>breast ultrasound</s> → <code>torso sound</code> — drifts off the anatomy</span>
+          </div>
+          <div class="compare-row ours-row">
+            <span class="method-name">Ours</span>
+            <span class="method-ex"><s>synthesize these features</s> → <code>integrate these findings</code></span>
+          </div>
+        </div>
+        <p class="table-note">
+          Across both tasks, SonoPromptAttack ranks best or second-best on quality scores
+          (naturalness, grammar, intent) in most settings—while remaining competitive on
+          attack success and leading on fluency.
+        </p>
+      </div>
+
+      <figure class="paper-figure">
+        <img
+          src="assets/figures/examples.png"
+          alt="Successful prompt-rewriting attacks across six ultrasound anatomies. Each panel shows original and rewritten prompts with prediction flips such as benign to malignant."
+          loading="lazy"
+          width="2800"
+          height="1559"
+          decoding="async"
+        />
+        <figcaption>
+          Real examples: small wording changes flip the model’s answer across six ultrasound
+          anatomies (target model MedGemma-4B; rewrites proposed by Qwen2.5-14B — paper Fig.&nbsp;4).
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- ABLATION -->
+    <section id="ablation" class="section">
+      <div class="section-label">
+        <span class="num">05</span>
+        <span>Ablation</span>
+      </div>
+      <h2>Why tree search beats greedy climbing</h2>
+      <p class="section-intro">
+        We keep the same rewrite model, filters, and query budget (80 model checks,
+        at most 8 edit steps) and only change how candidates are chosen. The chart
+        below is for lesion localization on LLaVA-Med-7B, with Qwen2.5-7B proposing
+        the rewrites.
+      </p>
+
+      <div class="ablation-chart" id="ablationChart" role="img" aria-label="Comparison of search strategies by attack success rate">
+        <div class="bar-row" data-asr="27.64">
+          <span class="bar-label">Random</span>
+          <div class="bar-track"><div class="bar-fill"></div></div>
+          <span class="bar-val">27.6%</span>
+        </div>
+        <div class="bar-row" data-asr="2.44">
+          <span class="bar-label">Greedy</span>
+          <div class="bar-track"><div class="bar-fill"></div></div>
+          <span class="bar-val">2.4%</span>
+        </div>
+        <div class="bar-row" data-asr="39.02">
+          <span class="bar-label">Beam</span>
+          <div class="bar-track"><div class="bar-fill"></div></div>
+          <span class="bar-val">39.0%</span>
+        </div>
+        <div class="bar-row" data-asr="37.40">
+          <span class="bar-label">Genetic</span>
+          <div class="bar-track"><div class="bar-fill"></div></div>
+          <span class="bar-val">37.4%</span>
+        </div>
+        <div class="bar-row ours-bar" data-asr="77.05">
+          <span class="bar-label">MCTS (ours)</span>
+          <div class="bar-track"><div class="bar-fill"></div></div>
+          <span class="bar-val">77.1%</span>
+        </div>
+      </div>
+      <p class="table-note">
+        Spending the same budget more carefully matters: greedy search gets stuck on
+        weak early edits, while Monte Carlo Tree Search roughly doubles the best baseline.
+      </p>
+    </section>
+
+    <!-- MODELS -->
+    <section id="setup" class="section section-alt models-section">
+      <div class="section-label">
+        <span class="num">06</span>
+        <span>Setup</span>
+      </div>
+      <h2>Models &amp; data</h2>
+      <div class="chip-grid">
+        <div class="chip-group">
+          <h3>Models we attack</h3>
+          <ul>
+            <li>MedGemma (4B &amp; 27B)</li>
+            <li>LLaVA-Med (7B)</li>
+            <li>QoQ-Med (7B &amp; 32B)</li>
+          </ul>
+        </div>
+        <div class="chip-group">
+          <h3>Models that rewrite prompts</h3>
+          <ul>
+            <li>Qwen2.5 (7B &amp; 14B)</li>
+            <li>Gemma 4 (E4B &amp; 12B)</li>
+          </ul>
+        </div>
+        <div class="chip-group">
+          <h3>Benchmark</h3>
+          <ul>
+            <li>U2-Bench disease diagnosis (1,911 images)</li>
+            <li>U2-Bench lesion localization (503 images)</li>
+            <li>Breast, thyroid, lung, skin, knee, pancreas, pelvic…</li>
+          </ul>
+        </div>
+        <div class="chip-group">
+          <h3>Baselines we compare to</h3>
+          <ul>
+            <li>Random &amp; greedy character typos</li>
+            <li>DeepWordBug (character noise)</li>
+            <li>TextFooler (word swaps)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAPER -->
+    <section id="paper" class="section paper-section">
+      <div class="section-label">
+        <span class="num">07</span>
+        <span>Paper</span>
+      </div>
+      <div class="paper-card">
+        <div class="paper-meta">
+          <p class="paper-venue">arXiv:2603.21047 · cs.CV</p>
+          <h2>When Minor Edits Matter: LLM-Driven Prompt Attack for Medical VLM Robustness in Ultrasound</h2>
+          <div class="paper-actions">
+            <a class="btn btn-primary" href="https://arxiv.org/pdf/2603.21047" target="_blank" rel="noopener noreferrer">arXiv PDF</a>
+            <a class="btn btn-ghost" href="https://arxiv.org/abs/2603.21047" target="_blank" rel="noopener noreferrer">arXiv abs</a>
+            <a class="btn btn-ghost" href="https://github.com/yasamin-med/SonoPromptAttack" target="_blank" rel="noopener noreferrer">Code</a>
+            <a class="btn btn-ghost" href="#cite">BibTeX</a>
+          </div>
+        </div>
+        <div class="paper-takeaways">
+          <h3>Takeaways</h3>
+          <ul>
+            <li>Routine clinical phrasing is enough to stress Med-VLMs—no need for overtly malicious prompts.</li>
+            <li>MCTS-guided LLM edits beat character/word baselines on the effectiveness–quality trade-off.</li>
+            <li>Anatomy and model scale both modulate vulnerability; report both.</li>
+            <li>Future: more US tasks, other modalities, open-ended reports, and robustness-aware defenses.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cite-block" id="cite">
+        <div class="cite-head">
+          <h3>Cite</h3>
+          <button type="button" class="btn btn-ghost btn-sm" id="copyBibtex">Copy BibTeX</button>
+        </div>
+        <pre class="bibtex" id="bibtex" tabindex="0" aria-label="BibTeX citation"><code>@misc{medghalchi2026minoreditsmatterllmdriven,
+  title         = {When Minor Edits Matter: LLM-Driven Prompt Attack for Medical VLM Robustness in Ultrasound},
+  author        = {Yasamin Medghalchi and Milad Yazdani and Amirhossein Dabiriaghdam and Moein Heidari and Mojan Izadkhah and Zahra Kavian and Giuseppe Carenini and Lele Wang and Dena Shahriari and Ilker Hacihaliloglu},
+  year          = {2026},
+  eprint        = {2603.21047},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CV},
+  url           = {https://arxiv.org/abs/2603.21047}
+}</code></pre>
+        <p class="copy-status" id="copyStatus" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>
+        <strong>SonoPromptAttack</strong>
+        ·
+        <a href="https://github.com/yasamin-med/SonoPromptAttack" target="_blank" rel="noopener noreferrer">Code</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
