@@ -11,6 +11,7 @@
   <meta property="og:description" content="LLM-driven prompt attack for medical VLM robustness in ultrasound. Black-box evaluation with MCTS-guided edits." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="assets/og-image.jpg" />
+  <meta property="og:url" content="https://sonopromptattack.github.io/" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="SonoPromptAttack — When Minor Edits Matter" />
   <meta name="twitter:description" content="LLM-driven prompt attack for medical VLM robustness in ultrasound." />
@@ -53,9 +54,11 @@
       <a href="#problem">Problem</a>
       <a href="#method">Method</a>
       <a href="#results">Results</a>
+      <a href="explorer/">Explorer</a>
       <a href="#quality">Quality</a>
       <a href="#ablation">Ablation</a>
       <a href="#paper">Paper</a>
+      <a href="https://github.com/yasamin-med/SonoPromptAttack" target="_blank" rel="noopener noreferrer">Code</a>
     </nav>
     <div class="header-actions">
       <button
@@ -117,8 +120,9 @@
               <span>Read the paper</span>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </a>
+            <a class="btn btn-ghost" href="explorer/">Interactive explorer</a>
+            <a class="btn btn-ghost" href="https://github.com/yasamin-med/SonoPromptAttack" target="_blank" rel="noopener noreferrer">Code</a>
             <a class="btn btn-ghost" href="#cite">Cite</a>
-            <a class="btn btn-ghost" href="#method">How it works</a>
           </div>
         </div>
 
@@ -156,6 +160,10 @@
             </div>
             <div class="demo-dots" id="demoDots" role="tablist" aria-label="Example cases"></div>
           </div>
+          <a class="panel-explore" id="panelExplore" href="explorer/?id=gemma-4-12b-it-medgemma-27b-dd-2">
+            Interactive explorer
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
         </aside>
       </div>
     </section>
@@ -309,6 +317,14 @@
         (what is wrong?) and <strong>lesion localization</strong> (where is it?),
         across five medical vision–language models. Attack success is counted only
         when the model was correct before the rewrite.
+      </p>
+
+      <p class="explorer-cta">
+        <a class="btn btn-primary" href="explorer/">
+          <span>Interactive explorer</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <span class="explorer-cta-note">Browse 200 recorded successful attacks by proposer, target model, and task.</span>
       </p>
 
       <div class="tabs" role="tablist" aria-label="Result tables">
@@ -687,6 +703,7 @@
           <div class="paper-actions">
             <a class="btn btn-primary" href="https://arxiv.org/pdf/2603.21047" target="_blank" rel="noopener noreferrer">arXiv PDF</a>
             <a class="btn btn-ghost" href="https://arxiv.org/abs/2603.21047" target="_blank" rel="noopener noreferrer">arXiv abs</a>
+            <a class="btn btn-ghost" href="https://github.com/yasamin-med/SonoPromptAttack" target="_blank" rel="noopener noreferrer">Code</a>
             <a class="btn btn-ghost" href="#cite">BibTeX</a>
           </div>
         </div>
@@ -724,6 +741,8 @@
     <div class="footer-inner">
       <p>
         <strong>SonoPromptAttack</strong>
+        ·
+        <a href="https://github.com/yasamin-med/SonoPromptAttack" target="_blank" rel="noopener noreferrer">Code</a>
       </p>
     </div>
   </footer>

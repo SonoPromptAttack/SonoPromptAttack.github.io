@@ -68,6 +68,7 @@
   const demos = [
     {
       anatomy: "Breast US",
+      explorerId: "gemma-4-12b-it-medgemma-27b-dd-2",
       original:
         'You are a radiologist <span class="hl">analyzing</span> a breast ultrasound image. Your task is to carefully examine…',
       rewritten:
@@ -77,6 +78,7 @@
     },
     {
       anatomy: "Lung US",
+      explorerId: "gemma-4-12b-it-medgemma-4b-dd-2",
       original:
         'Your task is to carefully <span class="hl">examine the provided</span> lung ultrasound image, focusing on the pleural line…',
       rewritten:
@@ -86,6 +88,7 @@
     },
     {
       anatomy: "Thyroid US",
+      explorerId: "qwen2.5-14b-instruct-medgemma-4b-dd-7",
       original:
         'You are a radiologist <span class="hl">specializing in head and neck</span>… carefully examine the provided thyroid ultrasound image…',
       rewritten:
@@ -95,6 +98,7 @@
     },
     {
       anatomy: "Knee US",
+      explorerId: "gemma-4-12b-it-medgemma-4b-dd-7",
       original:
         'analyzing an ultrasound image of <span class="hl">left/right knee</span>. Assess OA severity using Kellgren–Lawrence…',
       rewritten:
@@ -104,6 +108,7 @@
     },
     {
       anatomy: "Pelvic US",
+      explorerId: "gemma-4-e4b-it-qoq-med-7b-dd-8",
       original:
         'image obtained during a pelvic examination, <span class="hl">potentially as part of an evaluation for PCOS</span>.',
       rewritten:
@@ -113,6 +118,7 @@
     },
     {
       anatomy: "Pancreas US",
+      explorerId: "gemma-4-12b-it-medgemma-27b-dd-7",
       original:
         'evaluate the gland\'s echotexture, <span class="hl">size, margins, and the pancreatic duct diameter</span>…',
       rewritten:
@@ -148,6 +154,12 @@
   const dotsEl = document.getElementById("demoDots");
   const flipDemo = document.getElementById("flipDemo");
   const heroPanel = document.querySelector(".hero-panel");
+  const panelExplore = document.getElementById("panelExplore");
+
+  function syncExploreLink(d) {
+    if (!panelExplore || !d?.explorerId) return;
+    panelExplore.href = `explorer/?id=${encodeURIComponent(d.explorerId)}`;
+  }
 
   function applyDemo(d) {
     fields.anatomy.textContent = d.anatomy;
@@ -155,6 +167,7 @@
     fields.rewritten.innerHTML = d.rewritten;
     fields.before.textContent = d.before;
     fields.after.textContent = d.after;
+    syncExploreLink(d);
   }
 
   function renderDemo(i, animate = true) {
