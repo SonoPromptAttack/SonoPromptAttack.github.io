@@ -325,17 +325,19 @@ h1 {
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.45fr);
   gap: 0.85rem;
   padding: 1rem;
   background: var(--filter-bg);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  overflow: hidden;
 }
 
 label {
   display: grid;
   gap: 0.4rem;
+  min-width: 0;
   color: var(--filter-label);
   font-size: 0.68rem;
   font-weight: 700;
@@ -345,6 +347,9 @@ label {
 }
 
 select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 42px;
   border: 1px solid var(--select-border);
   border-radius: var(--radius);
@@ -352,6 +357,9 @@ select {
   color: var(--select-text);
   padding: 0 0.75rem;
   font: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 select:focus {
